@@ -1,5 +1,6 @@
 package com.crewmeister.cmcodingchallenge.currency.controller;
 
+import com.crewmeister.cmcodingchallenge.currency.dto.ConversionResultDto;
 import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.service.ExchangeRateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,8 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -52,5 +55,27 @@ public class ExchangeRateController {
             @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15")
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(exchangeRateService.getExchangeRatesForDate(date));
+    }
+
+    @Operation(
+            summary = "Convert a foreign amount to EUR on a specific date",
+            description = "Looks up the ECB reference rate for the given currency and date from H2, " +
+                          "then computes: convertedEur = amount / rate. " +
+                          "The BBEX3 rate is expressed as units of foreign currency per 1 EUR, " +
+                          "so dividing inverts the direction correctly (e.g. rate 1.0852 USD/EUR → " +
+                          "100 USD / 1.0852 ≈ 92.15 EUR)."
+    )
+    @ApiResponse(responseCode = "200", description = "Conversion result including the rate used")
+    @ApiResponse(responseCode = "404", description = "No rate for this currency on this date")
+    @ApiResponse(responseCode = "400", description = "Invalid date format or amount ≤ 0")
+    @GetMapping("/exchange-rates/{date}/{currency}/convert")
+    public ResponseEntity<ConversionResultDto> convertToEur(
+            @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15")
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "ISO 4217 currency code", example = "USD")
+            @PathVariable String currency,
+            @Parameter(description = "Amount in the foreign currency to convert", example = "100.00")
+            @RequestParam BigDecimal amount) {
+        return ResponseEntity.ok(exchangeRateService.convertToEur(currency, date, amount));
     }
 }

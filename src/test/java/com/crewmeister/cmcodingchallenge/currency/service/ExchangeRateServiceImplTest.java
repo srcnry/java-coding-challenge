@@ -1,5 +1,6 @@
 package com.crewmeister.cmcodingchallenge.currency.service;
 
+import com.crewmeister.cmcodingchallenge.currency.dto.ConversionResultDto;
 import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.exception.ExchangeRateNotFoundException;
 import com.crewmeister.cmcodingchallenge.currency.model.ExchangeRate;
@@ -85,5 +86,50 @@ class ExchangeRateServiceImplTest {
         service.getExchangeRatesForDate(date);
 
         verify(repository).findByDate(date);
+    }
+
+    // ── UC4 — convert foreign amount to EUR ───────────────────────────────────────────────────
+
+    @Test
+    void convertToEur_returnsCorrectConversionResult() {
+        LocalDate date = LocalDate.of(2024, 3, 15);
+        // Rate: 1 EUR = 1.0852 USD → 100 USD / 1.0852 ≈ 92.15 EUR
+        when(repository.findByCurrencyCodeAndDate("USD", date))
+                .thenReturn(Optional.of(new ExchangeRate("USD", date, new BigDecimal("1.0852"))));
+
+        ConversionResultDto result = service.convertToEur("USD", date, new BigDecimal("100.00"));
+
+        assertThat(result.currencyCode()).isEqualTo("USD");
+        assertThat(result.date()).isEqualTo(date);
+        assertThat(result.originalAmount()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(result.rate()).isEqualByComparingTo(new BigDecimal("1.0852"));
+        // 100 / 1.0852 = 92.15... rounded to 6dp
+        assertThat(result.convertedAmountInEur()).isEqualByComparingTo(
+                new BigDecimal("100.00").divide(new BigDecimal("1.0852"), 6, java.math.RoundingMode.HALF_UP));
+    }
+
+    @Test
+    void convertToEur_throws404_whenNoRateForCurrencyAndDate() {
+        LocalDate date = LocalDate.of(2024, 3, 16);
+        when(repository.findByCurrencyCodeAndDate("USD", date)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.convertToEur("USD", date, new BigDecimal("100")))
+                .isInstanceOf(ExchangeRateNotFoundException.class)
+                .hasMessageContaining("USD")
+                .hasMessageContaining("2024-03-16");
+    }
+
+    @Test
+    void convertToEur_throws400_whenAmountIsZero() {
+        assertThatThrownBy(() -> service.convertToEur("USD", LocalDate.now(), BigDecimal.ZERO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("greater than zero");
+    }
+
+    @Test
+    void convertToEur_throws400_whenAmountIsNegative() {
+        assertThatThrownBy(() -> service.convertToEur("USD", LocalDate.now(), new BigDecimal("-50")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("greater than zero");
     }
 }

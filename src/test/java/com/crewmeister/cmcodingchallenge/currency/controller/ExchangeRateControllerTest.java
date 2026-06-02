@@ -1,5 +1,6 @@
 package com.crewmeister.cmcodingchallenge.currency.controller;
 
+import com.crewmeister.cmcodingchallenge.currency.dto.ConversionResultDto;
 import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.exception.ExchangeRateNotFoundException;
 import com.crewmeister.cmcodingchallenge.currency.service.ExchangeRateService;
@@ -90,5 +91,55 @@ class ExchangeRateControllerTest {
         mockMvc.perform(get("/api/exchange-rates/not-a-date"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
+    }
+
+    // ── UC4 — convert foreign amount to EUR ───────────────────────────────────────────────────
+
+    @Test
+    void convertToEur_returns200WithConversionResult() throws Exception {
+        LocalDate date = LocalDate.of(2024, 3, 15);
+        ConversionResultDto result = new ConversionResultDto(
+                "USD", date,
+                new BigDecimal("100.00"),
+                new BigDecimal("92.153285"),
+                new BigDecimal("1.0852")
+        );
+        when(exchangeRateService.convertToEur("USD", date, new BigDecimal("100.00")))
+                .thenReturn(result);
+
+        mockMvc.perform(get("/api/exchange-rates/2024-03-15/USD/convert?amount=100.00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currencyCode").value("USD"))
+                .andExpect(jsonPath("$.date").value("2024-03-15"))
+                .andExpect(jsonPath("$.originalAmount").value(100.00))
+                .andExpect(jsonPath("$.convertedAmountInEur").value(92.153285))
+                .andExpect(jsonPath("$.rate").value(1.0852));
+    }
+
+    @Test
+    void convertToEur_returns404_whenNoRateForCurrencyAndDate() throws Exception {
+        LocalDate date = LocalDate.of(2024, 3, 16);
+        when(exchangeRateService.convertToEur("USD", date, new BigDecimal("100")))
+                .thenThrow(new ExchangeRateNotFoundException("USD", date));
+
+        mockMvc.perform(get("/api/exchange-rates/2024-03-16/USD/convert?amount=100"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value(containsString("USD")));
+    }
+
+    @Test
+    void convertToEur_returns400_whenAmountIsNegative() throws Exception {
+        when(exchangeRateService.convertToEur("USD", LocalDate.of(2024, 3, 15), new BigDecimal("-10")))
+                .thenThrow(new IllegalArgumentException("Amount must be greater than zero, got: -10"));
+
+        mockMvc.perform(get("/api/exchange-rates/2024-03-15/USD/convert?amount=-10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("greater than zero")));
+    }
+
+    @Test
+    void convertToEur_returns400_whenAmountParamIsMissing() throws Exception {
+        mockMvc.perform(get("/api/exchange-rates/2024-03-15/USD/convert"))
+                .andExpect(status().isBadRequest());
     }
 }

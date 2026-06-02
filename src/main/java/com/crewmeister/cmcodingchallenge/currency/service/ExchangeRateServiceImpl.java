@@ -1,10 +1,14 @@
 package com.crewmeister.cmcodingchallenge.currency.service;
 
+import com.crewmeister.cmcodingchallenge.currency.dto.ConversionResultDto;
 import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.exception.ExchangeRateNotFoundException;
+import com.crewmeister.cmcodingchallenge.currency.model.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.currency.repository.ExchangeRateRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -41,9 +45,21 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
     }
 
     @Override
-    public ExchangeRateDto getExchangeRateForCurrencyAndDate(String currencyCode, LocalDate date) {
-        return repository.findByCurrencyCodeAndDate(currencyCode, date)
-                .map(ExchangeRateDto::from)
+    public ConversionResultDto convertToEur(String currencyCode, LocalDate date, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero, got: " + amount);
+        }
+
+        ExchangeRate exchangeRate = repository.findByCurrencyCodeAndDate(currencyCode, date)
                 .orElseThrow(() -> new ExchangeRateNotFoundException(currencyCode, date));
+
+        // The BBEX3 rate is expressed as "units of foreign currency per 1 EUR",
+        // so dividing the foreign amount by the rate gives the EUR equivalent.
+        // e.g. rate = 1.0852 USD/EUR → 100 USD / 1.0852 ≈ 92.15 EUR
+        BigDecimal convertedAmount = amount.divide(
+                exchangeRate.getRate(), 6, RoundingMode.HALF_UP);
+
+        return new ConversionResultDto(
+                currencyCode, date, amount, convertedAmount, exchangeRate.getRate());
     }
 }
