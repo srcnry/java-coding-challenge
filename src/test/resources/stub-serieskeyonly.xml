@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<message:GenericData
+    xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message"
+    xmlns:generic="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/data/generic">
+  <message:Header/>
+  <message:DataSet>
+    <!-- Each Series represents one active currency — no observations (serieskeyonly) -->
+    <generic:Series>
+      <generic:SeriesKey>
+        <generic:Value id="FREQ" value="D"/>
+        <generic:Value id="BBK_STD_CURRENCY" value="USD"/>
+        <generic:Value id="BBK_ERX_PARTNER_CURRENCY" value="EUR"/>
+        <generic:Value id="BBK_ERX_SERIES_TYPE" value="BB"/>
+        <generic:Value id="BBK_ERX_RATE_TYPE" value="AC"/>
+        <generic:Value id="BBK_ERX_SUFFIX" value="000"/>
+      </generic:SeriesKey>
+    </generic:Series>
+    <generic:Series>
+      <generic:SeriesKey>
+        <generic:Value id="FREQ" value="D"/>
+        <generic:Value id="BBK_STD_CURRENCY" value="TRY"/>
+        <generic:Value id="BBK_ERX_PARTNER_CURRENCY" value="EUR"/>
+        <generic:Value id="BBK_ERX_SERIES_TYPE" value="BB"/>
+        <generic:Value id="BBK_ERX_RATE_TYPE" value="AC"/>
+        <generic:Value id="BBK_ERX_SUFFIX" value="000"/>
+      </generic:SeriesKey>
+    </generic:Series>
+    <generic:Series>
+      <generic:SeriesKey>
+        <generic:Value id="FREQ" value="D"/>
+        <generic:Value id="BBK_STD_CURRENCY" value="GBP"/>
+        <generic:Value id="BBK_ERX_PARTNER_CURRENCY" value="EUR"/>
+        <generic:Value id="BBK_ERX_SERIES_TYPE" value="BB"/>
+        <generic:Value id="BBK_ERX_RATE_TYPE" value="AC"/>
+        <generic:Value id="BBK_ERX_SUFFIX" value="000"/>
+      </generic:SeriesKey>
+    </generic:Series>
+  </message:DataSet>
+</message:GenericData>

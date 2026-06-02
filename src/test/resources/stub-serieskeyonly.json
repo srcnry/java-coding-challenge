@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "id": "BBEX3_D__EUR_BB_AC_000",
+    "prepared": "2026-06-02T00:00:00.000Z",
+    "sender": { "id": "BBK" }
+  },
+  "data": {
+    "structure": {
+      "dimensions": {
+        "dataSet": [
+          { "id": "DATAFLOW", "keyPosition": 0, "default": "BBEX3" }
+        ],
+        "series": [
+          {
+            "id": "BBK_STD_FREQ",
+            "keyPosition": 1,
+            "default": "D"
+          },
+          {
+            "id": "BBK_STD_CURRENCY",
+            "keyPosition": 2,
+            "values": [
+              { "id": "USD", "name": "USD" },
+              { "id": "TRY", "name": "TRY" },
+              { "id": "GBP", "name": "GBP" }
+            ]
+          },
+          {
+            "id": "BBK_ERX_PARTNER_CURRENCY",
+            "keyPosition": 3,
+            "default": "EUR"
+          }
+        ]
+      }
+    },
+    "dataSets": []
+  }
+}
