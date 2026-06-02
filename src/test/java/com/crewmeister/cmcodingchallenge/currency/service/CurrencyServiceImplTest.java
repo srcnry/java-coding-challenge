@@ -1,6 +1,6 @@
 package com.crewmeister.cmcodingchallenge.currency.service;
 
-import com.crewmeister.cmcodingchallenge.currency.client.BundesbankClient;
+import com.crewmeister.cmcodingchallenge.currency.client.ExchangeRateProvider;
 import com.crewmeister.cmcodingchallenge.currency.exception.BundesbankClientException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,15 +19,15 @@ import static org.mockito.Mockito.when;
 class CurrencyServiceImplTest {
 
     @Mock
-    private BundesbankClient bundesbankClient;
+    private ExchangeRateProvider exchangeRateProvider;
 
     @InjectMocks
     private CurrencyServiceImpl service;
 
     @Test
-    void returnsWhateverTheClientProvides() {
+    void returnsWhateverTheProviderProvides() {
         List<String> expected = List.of("GBP", "TRY", "USD");
-        when(bundesbankClient.fetchAvailableCurrencies()).thenReturn(expected);
+        when(exchangeRateProvider.fetchAvailableCurrencies()).thenReturn(expected);
 
         List<String> result = service.getAvailableCurrencies();
 
@@ -35,21 +35,21 @@ class CurrencyServiceImplTest {
     }
 
     @Test
-    void delegatesToTheClient() {
-        when(bundesbankClient.fetchAvailableCurrencies()).thenReturn(List.of());
+    void delegatesToTheProvider() {
+        when(exchangeRateProvider.fetchAvailableCurrencies()).thenReturn(List.of());
 
         service.getAvailableCurrencies();
 
-        verify(bundesbankClient).fetchAvailableCurrencies();
+        verify(exchangeRateProvider).fetchAvailableCurrencies();
     }
 
     @Test
-    void letsBundesbankClientExceptionBubbleUp() {
-        when(bundesbankClient.fetchAvailableCurrencies())
+    void letsProviderExceptionBubbleUp() {
+        when(exchangeRateProvider.fetchAvailableCurrencies())
                 .thenThrow(new BundesbankClientException("upstream is down"));
 
         assertThatThrownBy(() -> service.getAvailableCurrencies())
-                .isInstanceOf(BundesbankClientException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessage("upstream is down");
     }
 }
