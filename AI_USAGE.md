@@ -1,11 +1,11 @@
 ## AI Usage
 
-#### Which AI tools used
+## Which AI tools used
 - Claude
 
-#### Key Prompts/questions asked
+## Key Prompts/questions asked
 
-## Prompt 1
+#### Prompt 1
 ```
 Act as a software architect, summarize me the usages of Bundesbank exchange rate API based on the available endpoints. I need to understand which endpoints to use and how based on the use cases below:
 
@@ -19,15 +19,14 @@ Here is the available API documentation: [https://api.statistiken.bundesbank.de
 Avoid using verbose output, be concise and clear regarding the usage details.
 ```
 
-## Prompt 2
+#### Prompt 2
 ```
 Act as a software engineer, how to structure the incremental load based on the implemented ExchangeRateLoader.java.
 ```
 
 
-#### Relevant AI responses that shaped your solution
+## Relevant AI responses that shaped your solution
 ## Response for the 1st prompt
-## Response
 
 Here's the architect summary — all four use cases mapped to the relevant endpoints.
 
@@ -96,7 +95,7 @@ The API provides **rates only** — it does not perform conversion calculations.
 > The rates in `BBEX3` are expressed as units of foreign currency per 1 EUR, so dividing inverts the direction correctly (e.g. a rate of `1.08` for USD means 1 EUR = 1.08 USD → 100 USD / 1.08 ≈ 92.59 EUR).
 
 ---
-### Prompt 2
+## Response for Prompt 2
 Partial response that shows the logic evolution how to make an initial and incremental load.
 - load state empty?          → FULL LOAD   (fetch all history, no date filter)
 - lastLoadedDate < today?    → INCREMENTAL LOAD (fetch from lastLoadedDate - overlapDays → today)
@@ -104,7 +103,7 @@ Partial response that shows the logic evolution how to make an initial and incre
 - any exception?             → FAILED      (state not updated, next run retries)
 
 
-#### Reasoning for the accepting, modifyig, or rejecting AI suggestions
+## Reasoning for the accepting, modifyig, or rejecting AI suggestions
 
 - UC1 and UC4 are relatively usable explanations that shaped the implementation details. 
 - UC2 and UC3 as proposals look reasonable. However, especially the UC2 is not feasible to implement due to the size of the load that can be expected. That's why the idea has been accepted to use the endpoint, but the implementation has been moved to the idea of having persisted data in the db rather than just having a call and return the response to the requester. An initial load on start up would persist the information in db. UC3 is also shaped with the decision for UC2 which includes the persisted data in db.  
