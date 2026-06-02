@@ -15,16 +15,16 @@ import java.time.LocalDate;
 @Entity
 @Table(
         name = "exchange_rates",
-        // Prevents duplicate rows if the loader or scheduler ever overlap on the same day.
+        // The UNIQUE constraint on (currency_code, date) creates a B-tree index automatically —
+        // the database uses it for both uniqueness enforcement and point lookups.
+        // A separate regular index on the same columns would be redundant.
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_er_currency_date", columnNames = {"currency_code", "date"}
         ),
-        indexes = {
-                @Index(name = "idx_er_currency_date", columnList = "currency_code, date"),
-                // Dedicated date index — the composite above can't serve date-only queries
-                // because currency_code is the leading column.
-                @Index(name = "idx_er_date", columnList = "date")
-        }
+        // A dedicated date-only index is still necessary because uq_er_currency_date has
+        // currency_code as the leading column, so date-only queries (findByDate) cannot
+        // use that index efficiently — the database would resort to a full table scan.
+        indexes = @Index(name = "idx_er_date", columnList = "date")
 )
 public class ExchangeRate {
 

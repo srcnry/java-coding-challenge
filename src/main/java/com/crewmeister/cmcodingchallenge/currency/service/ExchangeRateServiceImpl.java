@@ -5,6 +5,8 @@ import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.exception.ExchangeRateNotFoundException;
 import com.crewmeister.cmcodingchallenge.currency.model.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.currency.repository.ExchangeRateRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,11 +24,10 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
     }
 
     @Override
-    public List<ExchangeRateDto> getAllExchangeRates() {
-        return repository.findAll()
-                .stream()
-                .map(ExchangeRateDto::from)
-                .toList();
+    public Page<ExchangeRateDto> getAllExchangeRates(Pageable pageable) {
+        // JpaRepository.findAll(Pageable) issues a count query + a data query;
+        // both are fast because H2 keeps everything in memory.
+        return repository.findAll(pageable).map(ExchangeRateDto::from);
     }
 
     @Override

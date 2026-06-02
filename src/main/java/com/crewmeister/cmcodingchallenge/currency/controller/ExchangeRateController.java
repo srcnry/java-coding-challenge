@@ -7,6 +7,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,15 +36,20 @@ public class ExchangeRateController {
     }
 
     @Operation(
-            summary = "Get all EUR-FX exchange rates at all available dates",
-            description = "Returns every ECB daily reference rate for every currency from the full " +
-                          "available history. Data is served from H2, populated at startup from the " +
-                          "Bundesbank bbk_csv_zip feed. Returns an empty array while loading."
+            summary = "Get all EUR-FX exchange rates (paginated)",
+            description = "Returns ECB daily reference rates from H2, one page at a time. " +
+                          "Default: 20 most-recent records sorted by date descending. " +
+                          "Pass ?page=N&size=M to paginate. " +
+                          "Returns an empty page while the initial load is still running."
     )
-    @ApiResponse(responseCode = "200", description = "Complete collection of exchange rates")
+    @ApiResponse(responseCode = "200", description = "Page of exchange rates with pagination metadata")
     @GetMapping("/exchange-rates")
-    public ResponseEntity<List<ExchangeRateDto>> getAllExchangeRates() {
-        return ResponseEntity.ok(exchangeRateService.getAllExchangeRates());
+    public ResponseEntity<Page<ExchangeRateDto>> getAllExchangeRates(
+            // @ParameterObject expands Pageable into individual page/size/sort query params in Swagger UI
+            @ParameterObject
+            @PageableDefault(size = 20, sort = "date", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(exchangeRateService.getAllExchangeRates(pageable));
     }
 
     @Operation(

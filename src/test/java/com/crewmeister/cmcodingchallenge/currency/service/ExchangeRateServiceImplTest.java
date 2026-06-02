@@ -11,6 +11,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,22 +38,28 @@ class ExchangeRateServiceImplTest {
     // ── UC2 ────────────────────────────────────────────────────────────────────────────────────
 
     @Test
-    void getAllExchangeRates_returnsMappedDtos() {
+    void getAllExchangeRates_returnsMappedDtosInPage() {
+        Pageable pageable = PageRequest.of(0, 20);
         ExchangeRate rate = new ExchangeRate("USD", LocalDate.of(2024, 1, 2), new BigDecimal("1.0935"));
-        when(repository.findAll()).thenReturn(List.of(rate));
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(rate), pageable, 1));
 
-        List<ExchangeRateDto> result = service.getAllExchangeRates();
+        Page<ExchangeRateDto> result = service.getAllExchangeRates(pageable);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).currencyCode()).isEqualTo("USD");
-        assertThat(result.get(0).rate()).isEqualByComparingTo(new BigDecimal("1.0935"));
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).currencyCode()).isEqualTo("USD");
+        assertThat(result.getContent().get(0).rate()).isEqualByComparingTo(new BigDecimal("1.0935"));
     }
 
     @Test
-    void getAllExchangeRates_returnsEmpty_whenDatabaseIsEmpty() {
-        when(repository.findAll()).thenReturn(List.of());
+    void getAllExchangeRates_returnsEmptyPage_whenDatabaseIsEmpty() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(repository.findAll(pageable)).thenReturn(Page.empty(pageable));
 
-        assertThat(service.getAllExchangeRates()).isEmpty();
+        Page<ExchangeRateDto> result = service.getAllExchangeRates(pageable);
+
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
     }
 
     // ── UC3 — all currencies for a date ───────────────────────────────────────────────────────

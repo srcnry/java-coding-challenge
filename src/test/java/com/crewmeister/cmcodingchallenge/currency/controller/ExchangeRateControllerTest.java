@@ -11,11 +11,16 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -34,28 +39,49 @@ class ExchangeRateControllerTest {
     // ── UC2 ────────────────────────────────────────────────────────────────────────────────────
 
     @Test
-    void getAllExchangeRates_returns200WithCollection() throws Exception {
-        when(exchangeRateService.getAllExchangeRates()).thenReturn(List.of(
+    void getAllExchangeRates_returns200WithPagedResponse() throws Exception {
+        Pageable pageable = PageRequest.of(0, 20);
+        List<ExchangeRateDto> content = List.of(
                 new ExchangeRateDto("USD", LocalDate.of(2024, 1, 2), new BigDecimal("1.0935")),
                 new ExchangeRateDto("TRY", LocalDate.of(2024, 1, 2), new BigDecimal("32.5684"))
-        ));
+        );
+        when(exchangeRateService.getAllExchangeRates(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(content, pageable, 2));
 
         mockMvc.perform(get("/api/exchange-rates"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].currencyCode").value("USD"))
-                .andExpect(jsonPath("$[0].date").value("2024-01-02"))
-                .andExpect(jsonPath("$[0].rate").value(1.0935));
+                // Page<T> wraps records under "content" alongside pagination metadata
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].currencyCode").value("USD"))
+                .andExpect(jsonPath("$.content[0].date").value("2024-01-02"))
+                .andExpect(jsonPath("$.content[0].rate").value(1.0935))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.size").value(20));
     }
 
     @Test
-    void getAllExchangeRates_returnsEmptyArray_whenDataNotYetLoaded() throws Exception {
-        when(exchangeRateService.getAllExchangeRates()).thenReturn(List.of());
+    void getAllExchangeRates_respectsExplicitPageAndSizeParams() throws Exception {
+        when(exchangeRateService.getAllExchangeRates(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 10), 100));
+
+        mockMvc.perform(get("/api/exchange-rates?page=2&size=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(100))
+                .andExpect(jsonPath("$.totalPages").value(10))
+                .andExpect(jsonPath("$.number").value(2));
+    }
+
+    @Test
+    void getAllExchangeRates_returnsEmptyPage_whenDataNotYetLoaded() throws Exception {
+        when(exchangeRateService.getAllExchangeRates(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/exchange-rates"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     // ── UC3 — all currencies for a date ───────────────────────────────────────────────────────
