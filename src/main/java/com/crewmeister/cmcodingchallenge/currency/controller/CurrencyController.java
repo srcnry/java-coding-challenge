@@ -1,5 +1,6 @@
 package com.crewmeister.cmcodingchallenge.currency.controller;
 
+import com.crewmeister.cmcodingchallenge.currency.dto.ErrorResponse;
 import com.crewmeister.cmcodingchallenge.currency.service.CurrencyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -14,7 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Tag(name = "Currencies", description = "Lists all currencies that have an active ECB reference rate series on the Bundesbank")
+@Tag(name = "Currencies",
+     description = "Lists all currencies that have an active ECB reference rate series on the Bundesbank")
 @RestController
 @RequestMapping("/api")
 public class CurrencyController {
@@ -29,12 +31,22 @@ public class CurrencyController {
             summary = "List all available currencies",
             description = "Returns the ISO 4217 codes of every currency for which the Bundesbank " +
                           "publishes a daily ECB reference rate (series type BB, middle rate). " +
-                          "Derived from the BBEX3 series catalogue via detail=serieskeyonly — " +
-                          "no observation data is transferred."
+                          "Fetched live via `detail=serieskeyonly` — no observation data is transferred. " +
+                          "Response is cached for 24 hours."
     )
-    @ApiResponse(responseCode = "200", description = "Sorted list of ISO 4217 currency codes",
-            content = @Content(array = @ArraySchema(schema = @Schema(type = "string", example = "USD"))))
-    @ApiResponse(responseCode = "502", description = "Bundesbank API is unreachable")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of ISO 4217 currency codes",
+            content = @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string", example = "USD"))
+            )
+    )
+    @ApiResponse(
+            responseCode = "502",
+            description = "Bundesbank API is unreachable",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
     @GetMapping("/currencies")
     public ResponseEntity<List<String>> getCurrencies() {
         return ResponseEntity.ok(currencyService.getAvailableCurrencies());

@@ -1,10 +1,14 @@
 package com.crewmeister.cmcodingchallenge.currency.controller;
 
 import com.crewmeister.cmcodingchallenge.currency.dto.ConversionResultDto;
+import com.crewmeister.cmcodingchallenge.currency.dto.ErrorResponse;
 import com.crewmeister.cmcodingchallenge.currency.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.currency.service.ExchangeRateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
@@ -24,7 +28,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-@Tag(name = "Exchange Rates", description = "EUR-FX daily reference rates sourced from the Bundesbank")
+@Tag(name = "Exchange Rates",
+     description = "EUR-FX daily ECB reference rates loaded from the Bundesbank and served from H2")
 @RestController
 @RequestMapping("/api")
 public class ExchangeRateController {
@@ -39,13 +44,12 @@ public class ExchangeRateController {
             summary = "Get all EUR-FX exchange rates (paginated)",
             description = "Returns ECB daily reference rates from H2, one page at a time. " +
                           "Default: 20 most-recent records sorted by date descending. " +
-                          "Pass ?page=N&size=M to paginate. " +
-                          "Returns an empty page while the initial load is still running."
+                          "Use `?page=N&size=M&sort=field,dir` to control paging and ordering. " +
+                          "Returns an empty page while the initial startup load is still running."
     )
     @ApiResponse(responseCode = "200", description = "Page of exchange rates with pagination metadata")
     @GetMapping("/exchange-rates")
     public ResponseEntity<Page<ExchangeRateDto>> getAllExchangeRates(
-            // @ParameterObject expands Pageable into individual page/size/sort query params in Swagger UI
             @ParameterObject
             @PageableDefault(size = 20, sort = "date", direction = Sort.Direction.DESC)
             Pageable pageable) {
@@ -53,38 +57,66 @@ public class ExchangeRateController {
     }
 
     @Operation(
-            summary = "Get all EUR-FX rates for a specific date",
-            description = "Returns every currency's ECB reference rate for the given trading day. " +
+            summary = "Get all EUR-FX rates for a specific trading day",
+            description = "Returns every currency's ECB reference rate for the given date from H2. " +
                           "Returns 404 for weekends, bank holidays, and dates outside the loaded range."
     )
-    @ApiResponse(responseCode = "200", description = "All rates for the requested date")
-    @ApiResponse(responseCode = "404", description = "No rates for this date (weekend / holiday / out of range)")
-    @ApiResponse(responseCode = "400", description = "Date is not in yyyy-MM-dd format")
+    @ApiResponse(
+            responseCode = "200",
+            description = "All rates for the requested date",
+            content = @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = ExchangeRateDto.class))
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No rates for this date — weekend, bank holiday, or outside loaded range",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Date is not in yyyy-MM-dd format",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
     @GetMapping("/exchange-rates/{date}")
     public ResponseEntity<List<ExchangeRateDto>> getExchangeRatesForDate(
-            @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15")
+            @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15", required = true)
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(exchangeRateService.getExchangeRatesForDate(date));
     }
 
     @Operation(
-            summary = "Convert a foreign amount to EUR on a specific date",
-            description = "Looks up the ECB reference rate for the given currency and date from H2, " +
-                          "then computes: convertedEur = amount / rate. " +
-                          "The BBEX3 rate is expressed as units of foreign currency per 1 EUR, " +
-                          "so dividing inverts the direction correctly (e.g. rate 1.0852 USD/EUR → " +
-                          "100 USD / 1.0852 ≈ 92.15 EUR)."
+            summary = "Convert a foreign currency amount to EUR on a specific date",
+            description = "Looks up the ECB reference rate for the given currency and date, " +
+                          "then computes: `convertedEur = amount / rate`. " +
+                          "The BBEX3 rate is expressed as units of foreign currency per 1 EUR — " +
+                          "dividing inverts the direction correctly " +
+                          "(e.g. rate 1.0852 USD/EUR → 100 USD / 1.0852 ≈ 92.15 EUR)."
     )
-    @ApiResponse(responseCode = "200", description = "Conversion result including the rate used")
-    @ApiResponse(responseCode = "404", description = "No rate for this currency on this date")
-    @ApiResponse(responseCode = "400", description = "Invalid date format or amount ≤ 0")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Conversion result including the original amount, EUR equivalent, and rate used",
+            content = @Content(schema = @Schema(implementation = ConversionResultDto.class))
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "No rate for this currency on this date",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid date format, missing amount parameter, or amount ≤ 0",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
     @GetMapping("/exchange-rates/{date}/{currency}/convert")
     public ResponseEntity<ConversionResultDto> convertToEur(
-            @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15")
+            @Parameter(description = "Trading date in yyyy-MM-dd format", example = "2024-03-15", required = true)
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @Parameter(description = "ISO 4217 currency code", example = "USD")
+            @Parameter(description = "ISO 4217 currency code", example = "USD", required = true)
             @PathVariable String currency,
-            @Parameter(description = "Amount in the foreign currency to convert", example = "100.00")
+            @Parameter(description = "Amount in the foreign currency to convert (must be > 0)",
+                       example = "100.00", required = true)
             @RequestParam BigDecimal amount) {
         return ResponseEntity.ok(exchangeRateService.convertToEur(currency, date, amount));
     }
